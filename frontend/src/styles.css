@@ -26,6 +26,94 @@ a {
   text-decoration: none;
 }
 
+.app-shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar .brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.side-link {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.side-link:hover {
+  background: #eef4f3;
+}
+
+.side-link.router-link-active {
+  color: var(--accent);
+  background: #e6f2f0;
+  font-weight: 600;
+}
+
+.export-box {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fbfdfc;
+}
+
+.export-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.export-hint {
+  font-size: 12px;
+  margin: 4px 0 8px;
+  line-height: 1.5;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.side-footer {
+  margin-top: auto;
+  font-size: 13px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .page {
   max-width: 1100px;
   margin: 0 auto;
@@ -48,35 +136,17 @@ a {
   word-break: break-all;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.brand {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.nav-links {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.nav-links a.router-link-active {
-  color: var(--accent);
-  font-weight: 600;
+@media (max-width: 800px) {
+  .app-shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
 }
 
 .grid-2 {

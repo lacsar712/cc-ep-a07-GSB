@@ -12,6 +12,12 @@
       <div style="display: flex; gap: 8px">
         <n-button @click="$router.push(`/runs/${run.id}/events`)">事件时间线</n-button>
         <n-button @click="$router.push(`/runs/${run.id}/lineage`)">血缘</n-button>
+        <n-button :loading="downloading === 'csv'" @click="doDownload('csv')">
+          下载 CSV 报告
+        </n-button>
+        <n-button :loading="downloading === 'txt'" @click="doDownload('txt')">
+          下载 TXT 报告
+        </n-button>
       </div>
     </div>
 
@@ -104,8 +110,10 @@ import {
   abortRun,
   attachArtifact,
   completeRun,
+  downloadRunReport,
   getRun,
   recordMetric,
+  saveBlob,
 } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 
@@ -114,6 +122,7 @@ const auth = useAuthStore()
 const message = useMessage()
 const run = ref(null)
 const busy = ref(false)
+const downloading = ref(null)
 const completeSummary = ref('')
 const abortReason = ref('')
 
@@ -157,6 +166,19 @@ function randomHex(n) {
 
 async function load() {
   run.value = await getRun(route.params.id)
+}
+
+async function doDownload(format) {
+  downloading.value = format
+  try {
+    const { blob, filename } = await downloadRunReport(run.value.id, format)
+    saveBlob(blob, filename)
+    message.success(`报告已下载：${filename}`)
+  } catch (e) {
+    message.error(e.message || '报告下载失败')
+  } finally {
+    downloading.value = null
+  }
 }
 
 async function withBusy(fn) {

@@ -3,11 +3,19 @@
     <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap">
       <div>
         <h1 style="margin-bottom: 4px">事件时间线</h1>
-        <p class="muted" style="margin-top: 0">按 version 展示 event_store 原始事件</p>
+        <p class="muted" style="margin-top: 0">
+          按 version 展示 event_store 原始事件 · 共 {{ events.length }} 条
+        </p>
       </div>
       <div style="display: flex; gap: 8px">
         <n-button @click="$router.push(`/runs/${id}`)">返回详情</n-button>
         <n-button @click="$router.push(`/runs/${id}/lineage`)">血缘</n-button>
+        <n-button :loading="downloading === 'csv'" @click="doDownload('csv')">
+          下载 CSV 报告
+        </n-button>
+        <n-button :loading="downloading === 'txt'" @click="doDownload('txt')">
+          下载 TXT 报告
+        </n-button>
       </div>
     </div>
 
@@ -35,16 +43,30 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { getEvents } from '../api/client'
+import { downloadRunReport, getEvents, saveBlob } from '../api/client'
 
 const route = useRoute()
 const message = useMessage()
 const events = ref([])
 const loading = ref(true)
+const downloading = ref(null)
 const id = computed(() => route.params.id)
 
 function formatTime(v) {
   return new Date(v).toLocaleString()
+}
+
+async function doDownload(format) {
+  downloading.value = format
+  try {
+    const { blob, filename } = await downloadRunReport(id.value, format)
+    saveBlob(blob, filename)
+    message.success(`报告已下载：${filename}`)
+  } catch (e) {
+    message.error(e.message || '报告下载失败')
+  } finally {
+    downloading.value = null
+  }
 }
 
 function itemType(t) {

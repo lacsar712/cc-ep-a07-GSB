@@ -16,8 +16,16 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    const detail = err.response?.data?.detail
+  async (err) => {
+    let detail = err.response?.data?.detail
+    // blob 请求（如报告下载）的错误体也是 Blob，需要读出 JSON
+    if (detail && typeof detail.text === 'function') {
+      try {
+        detail = JSON.parse(await detail.text()).detail
+      } catch {
+        detail = undefined
+      }
+    }
     if (typeof detail === 'string') {
       err.message = detail
     } else if (Array.isArray(detail)) {
@@ -75,6 +83,33 @@ export async function getEvents(id) {
 export async function getLineage(id) {
   const { data } = await api.get(`/runs/${id}/lineage`)
   return data
+}
+
+/**
+ * 下载后端生成的单 Run 溯源报告（CSV / TXT）。
+ * 文件内容完全由后端产出，前端只负责请求与保存，不拼接任何字段。
+ * 返回 { blob, filename }。
+ */
+export async function downloadRunReport(id, format = 'txt') {
+  const res = await api.get(`/runs/${id}/report`, {
+    params: { format },
+    responseType: 'blob',
+  })
+  const disposition = res.headers['content-disposition'] || ''
+  const match = disposition.match(/filename="?([^"]+)"?/) || disposition.match(/filename\*=UTF-8''([^;]+)/)
+  const filename = match ? decodeURIComponent(match[1]) : `run-report-${id}.${format}`
+  return { blob: res.data, filename }
+}
+
+export function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 export default api

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,7 @@ from app.cqrs import (
 )
 from app.database import get_db
 from app.models import RunProjection
+from app.reports import render_csv_report, render_text_report, report_filename
 from app.schemas import (
     AbortRunCommand,
     AttachArtifactCommand,
@@ -224,3 +226,37 @@ def get_lineage(
         started_by=proj.started_by,
         version=proj.version,
     )
+
+
+@router.get("/runs/{run_id}/report")
+def download_run_report(
+    run_id: UUID,
+    format: str = Query(default="txt", pattern="^(csv|txt)$"),
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """由后端生成单 Run 溯源报告（CSV / 纯文本）并作为附件下载。
+
+    只读端点：研究员与审计员均可下载，任何角色都无法借此修改数据。
+    """
+    proj = db.get(RunProjection, run_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Run 不存在")
+
+    events = list_events(db, run_id)
+    if format == "csv":
+        content = render_csv_report(proj, events)
+        media_type = "text/csv; charset=utf-8"
+    else:
+        content = render_text_report(proj, events)
+        media_type = "text/plain; charset=utf-8"
+
+    filename = report_filename(proj, format)
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-Event-Count": str(len(events)),
+    }
+    # UTF-8 BOM 让 Excel 正确识别中文表头
+    prefix = "\ufeff" if format == "csv" else ""
+    body = (prefix + content).encode("utf-8")
+    return Response(content=body, media_type=media_type, headers=headers)

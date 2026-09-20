@@ -35,9 +35,9 @@
 
 <script setup>
 import { h, onMounted, ref } from 'vue'
-import { NButton, NTag, useMessage } from 'naive-ui'
+import { NButton, NDropdown, NTag, useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import { listRuns } from '../api/client'
+import { downloadRunReport, listRuns, saveBlob } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -58,6 +58,21 @@ const statusMap = {
   running: { type: 'info', label: '进行中' },
   completed: { type: 'success', label: '已完成' },
   aborted: { type: 'warning', label: '已中止' },
+}
+
+const exportOptions = [
+  { label: '下载 CSV 报告', key: 'csv' },
+  { label: '下载 TXT 报告', key: 'txt' },
+]
+
+async function handleExport(format, row) {
+  try {
+    const { blob, filename } = await downloadRunReport(row.id, format)
+    saveBlob(blob, filename)
+    message.success(`报告已下载：${filename}`)
+  } catch (e) {
+    message.error(e.message || '报告下载失败')
+  }
 }
 
 const columns = [
@@ -90,6 +105,15 @@ const columns = [
           h(NButton, { size: 'tiny', onClick: () => router.push(`/runs/${row.id}`) }, { default: () => '详情' }),
           h(NButton, { size: 'tiny', quaternary: true, onClick: () => router.push(`/runs/${row.id}/events`) }, { default: () => '事件' }),
           h(NButton, { size: 'tiny', quaternary: true, onClick: () => router.push(`/runs/${row.id}/lineage`) }, { default: () => '血缘' }),
+          h(
+            NDropdown,
+            {
+              options: exportOptions,
+              trigger: 'click',
+              onSelect: (key) => handleExport(key, row),
+            },
+            { default: () => h(NButton, { size: 'tiny', type: 'primary' }, { default: () => '导出报告 ⌄' }) },
+          ),
         ],
       )
     },

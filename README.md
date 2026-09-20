@@ -64,8 +64,19 @@ pytest -q
 6. 打开「血缘」确认 code_commit、dataset 指纹、artifacts、metrics
 7. 健康检查：`GET http://localhost:8173/api/health`
 8. 用 `auditor` 登录：可看列表/事件/血缘，命令按钮不可用
+9. 导出报告：在左侧栏「导出溯源报告」选定一条 Run，点击「下载 CSV / TXT」；
+   详情页与事件时间线页也有下载按钮。文件由后端生成（`GET /api/runs/{id}/report?format=csv|txt`），
+   含状态、两枚指纹、事件摘要、指标与产物，研究员与审计员均可下载（审计员只读）。
 
 终态或 `expected_version` 不匹配时，API 返回 **409**。
+
+### 导出核对
+
+导出一条**已完成**的 Run，打开下载文件后确认：
+
+- 状态、`dataset_content_sha256`、`code_commit_sha` 与详情页一致
+- 「事件摘要」条数 = 事件时间线条数（响应头 `X-Event-Count` 同值）
+- 指标、产物逐条与投影表格一致（名称、值、产物指纹等）
 
 ## 架构要点
 

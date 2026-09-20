@@ -15,6 +15,8 @@
       </div>
     </div>
 
+    <div class="detail-layout">
+      <div class="detail-main">
     <div class="card" style="margin-bottom: 16px">
       <div class="grid-2">
         <div>
@@ -93,6 +95,32 @@
       </div>
     </div>
     <div v-else class="card muted">审计员只读：可查看事件与血缘，不可发送命令。</div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="card export-card">
+          <h3 style="margin-top: 0">导出溯源报告</h3>
+          <p class="muted" style="font-size: 13px">
+            报告由后端实时生成，包含状态、数据/代码两枚指纹、事件摘要（{{ run.version }} 条）、指标与产物。
+          </p>
+          <n-button
+            block
+            type="primary"
+            style="margin-bottom: 8px"
+            :loading="exporting === 'csv'"
+            @click="downloadReport('csv')"
+          >
+            下载 CSV 报告
+          </n-button>
+          <n-button block :loading="exporting === 'txt'" @click="downloadReport('txt')">
+            下载 TXT 报告
+          </n-button>
+          <p class="muted" style="font-size: 12px; margin-bottom: 0">
+            研究员与审计员均可下载；导出为只读快照，不会修改任何数据。
+          </p>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -104,6 +132,7 @@ import {
   abortRun,
   attachArtifact,
   completeRun,
+  exportRunReport,
   getRun,
   recordMetric,
 } from '../api/client'
@@ -114,6 +143,7 @@ const auth = useAuthStore()
 const message = useMessage()
 const run = ref(null)
 const busy = ref(false)
+const exporting = ref('')
 const completeSummary = ref('')
 const abortReason = ref('')
 
@@ -157,6 +187,39 @@ function randomHex(n) {
 
 async function load() {
   run.value = await getRun(route.params.id)
+}
+
+// 文件内容由后端生成并随响应返回，前端只负责落盘，不拼装文件
+async function downloadReport(format) {
+  exporting.value = format
+  try {
+    const res = await exportRunReport(run.value.id, format)
+    const dispo = res.headers['content-disposition'] || ''
+    const match = dispo.match(/filename="?([^";]+)"?/)
+    const filename = match ? match[1] : `run-${run.value.id}-report.${format}`
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+    message.success(`报告已下载：${filename}`)
+  } catch (e) {
+    let msg = '导出失败'
+    if (e.response?.data instanceof Blob) {
+      try {
+        const parsed = JSON.parse(await e.response.data.text())
+        if (typeof parsed.detail === 'string') msg = parsed.detail
+      } catch {
+        /* 保留默认提示 */
+      }
+    } else if (e.message) {
+      msg = e.message
+    }
+    message.error(msg)
+  } finally {
+    exporting.value = ''
+  }
 }
 
 async function withBusy(fn) {

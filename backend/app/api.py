@@ -1,6 +1,8 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,13 @@ from app.cqrs import (
 )
 from app.database import get_db
 from app.models import RunProjection
+from app.report import (
+    CSV_MEDIA_TYPE,
+    TXT_MEDIA_TYPE,
+    build_run_report_csv,
+    build_run_report_txt,
+    report_filename,
+)
 from app.schemas import (
     AbortRunCommand,
     AttachArtifactCommand,
@@ -101,6 +110,32 @@ def get_run(
     if not proj:
         raise HTTPException(status_code=404, detail="Run 不存在")
     return proj
+
+
+@router.get("/runs/{run_id}/export")
+def export_run_report(
+    run_id: UUID,
+    format: Literal["csv", "txt"] = Query(default="csv"),
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+):
+    """导出单 Run 溯源报告（CSV/TXT）。只读：研究员与审计员均可下载，不产生任何写操作。"""
+    proj = db.get(RunProjection, run_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Run 不存在")
+    events = list_events(db, run_id)
+    if format == "csv":
+        content = build_run_report_csv(proj, events)
+        media_type = CSV_MEDIA_TYPE
+    else:
+        content = build_run_report_txt(proj, events)
+        media_type = TXT_MEDIA_TYPE
+    filename = report_filename(proj, format)
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/runs/{run_id}/metrics", response_model=RunOut)

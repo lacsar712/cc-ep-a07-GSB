@@ -64,6 +64,10 @@ pytest -q
 6. 打开「血缘」确认 code_commit、dataset 指纹、artifacts、metrics
 7. 健康检查：`GET http://localhost:8173/api/health`
 8. 用 `auditor` 登录：可看列表/事件/血缘，命令按钮不可用
+9. 在任一已完成 Run 的详情页右侧侧栏点击「下载 CSV 报告」或「下载 TXT 报告」：
+   文件由后端生成（`GET /api/runs/{id}/export?format=csv|txt`），包含状态、
+   dataset/code 两枚指纹、事件摘要、指标与产物；打开文件核对字段与详情页一致、
+   事件条数与时间线一致。审计员同样可下载（只读，不能改数据）。
 
 终态或 `expected_version` 不匹配时，API 返回 **409**。
 
@@ -73,3 +77,6 @@ pytest -q
 - **事件**：`RunStarted` / `MetricRecorded` / `ArtifactAttached` / `RunCompleted` / `RunAborted`
 - **event_store**：`(aggregate_id, version)` 唯一；冲突 → 409
 - **run_projections**：查询侧投影（状态、指标、产物等）
+- **报告导出**：`GET /api/runs/{id}/export?format=csv|txt` 由后端读取投影 + event_store
+  实时生成文件（`Content-Disposition: attachment`），前端只透传保存，不拼装内容；
+  任意登录角色（含审计员）可下载，接口为只读 GET，不产生事件

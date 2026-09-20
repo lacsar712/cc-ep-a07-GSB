@@ -77,4 +77,13 @@ export async function getLineage(id) {
   return data
 }
 
+// 文件由后端生成，前端仅透传保存响应体，不自行拼装内容
+export async function exportRunReport(id, format) {
+  const res = await api.get(`/runs/${id}/export`, {
+    params: { format },
+    responseType: 'blob',
+  })
+  return res
+}
+
 export default api
